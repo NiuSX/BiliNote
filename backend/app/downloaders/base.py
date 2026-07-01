@@ -15,9 +15,16 @@ QUALITY_MAP = {
 
 
 class Downloader(ABC):
+    """所有平台下载器的统一接口。
+
+    NoteGenerator 只依赖这个抽象，不直接关心 B 站、YouTube、抖音等平台差异。
+    新增平台时实现 download/download_video/download_subtitles，并在 SUPPORT_PLATFORM_MAP 注册即可。
+    """
+
     def __init__(self):
-        #TODO 需要修改为可配置
+        # TODO 需要修改为可配置。当前默认 fast，实际下载质量由 download() 的 quality 入参决定。
         self.quality = QUALITY_MAP.get('fast')
+        # DATA_DIR 用于集中存放下载缓存；未配置时由具体下载器自行兜底。
         self.cache_data=getenv('DATA_DIR')
 
     @abstractmethod
@@ -37,6 +44,7 @@ class Downloader(ABC):
     @staticmethod
     def download_video(self, video_url: str,
                        output_dir: Union[str, None] = None) -> str:
+        """下载完整视频文件，用于截图和多模态视频理解。"""
         pass
 
     def download_subtitles(self, video_url: str, output_dir: str = None,

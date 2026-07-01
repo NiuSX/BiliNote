@@ -13,6 +13,11 @@ logger = get_logger(__name__)
 NOTE_OUTPUT_DIR = os.getenv("NOTE_OUTPUT_DIR", "note_results")
 VECTOR_DB_DIR = os.getenv("VECTOR_DB_DIR", "vector_db")
 
+# 一个任务会被拆成三类可检索材料：
+# 1. meta：标题、作者、简介、标签等视频元信息；
+# 2. markdown：LLM 生成的结构化笔记；
+# 3. transcript：原始转写片段。
+# 查询时按来源设定配额，避免长转写文本把笔记和元信息全部挤掉。
 
 def _chunk_markdown(markdown: str) -> list[dict]:
     """按 H2/H3 标题拆分 markdown 为语义块。"""

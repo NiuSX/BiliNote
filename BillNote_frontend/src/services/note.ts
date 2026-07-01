@@ -1,6 +1,9 @@
 import request from '@/utils/request'
 import toast from 'react-hot-toast'
 
+// 与 backend/app/routers/note.py 对齐的 API 封装。
+// 这里不直接处理任务进度，提交后由 useTaskPolling 按 task_id 查询 /task_status。
+
 export const generateNote = async (data: {
   video_url: string
   platform: string
@@ -61,7 +64,7 @@ export const delete_task = async ({ video_id, platform }) => {
 
 export const get_task_status = async (task_id: string) => {
   try {
-    // 成功提示
+    // 返回值由后端 ResponseWrapper 拦截器拆包，成功任务会带 result 字段。
 
     return await request.get('/task_status/' + task_id)
   } catch (e) {

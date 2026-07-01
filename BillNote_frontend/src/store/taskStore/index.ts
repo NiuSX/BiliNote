@@ -6,6 +6,11 @@ import toast from 'react-hot-toast'
 import { get, set, del } from 'idb-keyval'
 
 
+// 任务状态是前端的核心本地缓存：
+// - 后端只保存 note_results/{task_id}.json 和状态文件；
+// - 前端用 Zustand 维护当前任务、历史任务、Markdown 版本；
+// - persist + idb-keyval 将这些状态放入 IndexedDB，刷新页面后仍可恢复。
+
 export type TaskStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILD'
 
 export interface AudioMeta {
@@ -111,6 +116,7 @@ export const useTaskStore = create<TaskStore>()(
             tasks: state.tasks.map(task => {
               if (task.id !== id) return task
 
+              // 防止轮询重复命中 SUCCESS 时不断追加同一份 Markdown 版本。
               if (task.status === 'SUCCESS' && data.status === 'SUCCESS') return task
 
               // 如果是 markdown 字符串，封装为版本

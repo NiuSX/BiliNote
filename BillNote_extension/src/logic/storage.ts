@@ -6,6 +6,7 @@ export { DEFAULT_BACKEND_URL, DEFAULT_SETTINGS, MAX_TASKS } from './constants'
 
 // 全局共享设置（popup / options / sidepanel 三个 Vue 上下文都读这一份）
 // 注意：background service worker 不要 import 这个文件，改用 chrome.storage 直读
+// useWebExtensionStorage 会把 ref 与 chrome.storage.local 双向同步，适合 popup/sidepanel 这种短生命周期页面。
 export const { data: settings, dataReady: settingsReady } = useWebExtensionStorage<Settings>(
   SETTINGS_KEY,
   DEFAULT_SETTINGS,
@@ -18,6 +19,7 @@ export const { data: tasks, dataReady: tasksReady } = useWebExtensionStorage<Tas
 )
 
 export function upsertTask(record: TaskRecord) {
+  // 用 taskId 去重，保留最近 MAX_TASKS 条，避免扩展存储无限增长。
   const list = tasks.value ?? []
   const idx = list.findIndex(t => t.taskId === record.taskId)
   if (idx >= 0)

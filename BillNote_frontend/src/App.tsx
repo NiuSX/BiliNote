@@ -10,6 +10,12 @@ import BackendHealthIndicator from '@/components/BackendHealth/BackendHealthIndi
 import Index from '@/pages/Index.tsx'
 import { HomePage } from './pages/HomePage/Home.tsx'
 
+// App.tsx 负责应用级编排：
+// 1. 等待后端初始化完成；
+// 2. 启动全局任务轮询；
+// 3. 按运行环境选择 BrowserRouter 或 HashRouter；
+// 4. 注册首页、设置页和桌面端 onboarding 路由。
+
 // 非首屏页面使用 React.lazy 按需加载
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const SettingPage = lazy(() => import('./pages/SettingPage/index.tsx'))

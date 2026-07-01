@@ -41,6 +41,11 @@ import { fetchModels } from '@/services/model.ts'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
+// NoteForm 是“生成笔记”主入口：
+// - zod 负责把 UI 输入约束到后端 VideoRequest 能接受的形状；
+// - Zustand taskStore 保存任务历史和当前编辑任务；
+// - 提交成功后只登记 PENDING，最终内容由全局轮询 hook 写回。
+
 /* -------------------- 校验 Schema -------------------- */
 const formSchema = z
   .object({
@@ -219,12 +224,15 @@ const NoteForm = () => {
 
   const onSubmit = async (values: NoteFormValues) => {
     console.log('Not even go here')
+    // 后端需要 provider_id + model_name 才能实例化 GPT；表单只展示 model_name，
+    // 所以这里从已启用模型列表中补齐 provider_id。
     const payload: NoteFormValues = {
       ...values,
       provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
       task_id: currentTaskId || '',
     }
     if (currentTaskId) {
+      // 当前任务存在时走重试：复用 task_id，覆盖后端缓存和前端 formData。
       retryTask(currentTaskId, payload)
       return
     }

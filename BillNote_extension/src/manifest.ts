@@ -6,8 +6,8 @@ import { isDev, isFirefox, port, r } from '../scripts/utils'
 export async function getManifest() {
   const pkg = await fs.readJSON(r('package.json')) as typeof PkgType
 
-  // update this file to update this manifest.json
-  // can also be conditional based on your need
+  // 构建时由 scripts 读取这个对象生成最终 manifest.json。
+  // popup/options/sidepanel 都指向 dist 下的 Vite 构建产物。
   const manifest: Manifest.WebExtensionManifest = {
     manifest_version: 3,
     name: pkg.displayName || pkg.name,

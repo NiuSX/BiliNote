@@ -20,10 +20,12 @@ interface ApiEnvelope<T> {
 }
 
 function backendUrl(): string {
+  // 扩展默认连接本机后端，也允许用户在 options 页面改成远程部署地址。
   return (settings.value?.backendUrl || 'http://localhost:8483').replace(/\/$/, '')
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // 浏览器扩展没有使用前端 Axios 实例，因此在这里统一处理 ResponseWrapper 拆包和业务错误。
   const res = await fetch(`${backendUrl()}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
     ...init,
@@ -178,6 +180,7 @@ export async function getSysHealth(): Promise<{ ok: boolean, msg?: string }> {
 }
 
 export async function generateNote(payload: GenerateRequest): Promise<{ task_id: string }> {
+  // 与 Web 前端共用同一个 /api/generate_note；payload 中可能包含扩展侧预抓的字幕。
   return request<{ task_id: string }>('/api/generate_note', {
     method: 'POST',
     body: JSON.stringify(payload),

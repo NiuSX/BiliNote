@@ -22,6 +22,9 @@ from ffmpeg_helper import ensure_ffmpeg_or_raise
 logger = get_logger(__name__)
 load_dotenv()
 
+# main.py 是后端进程入口：负责启动期副作用和运行时中间件。
+# 纯 app 创建逻辑在 app/__init__.py 中，便于测试或其他宿主环境复用。
+
 # 读取 .env 中的路径
 static_path = os.getenv('STATIC', '/static')
 out_dir = os.getenv('OUT_DIR', './static/screenshots')

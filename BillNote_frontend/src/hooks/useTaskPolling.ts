@@ -4,6 +4,7 @@ import { get_task_status } from '@/services/note.ts'
 import toast from 'react-hot-toast'
 
 export const useTaskPolling = (interval = 3000) => {
+  // 任务列表持久化在 Zustand + IndexedDB 中；轮询 hook 只关心“未完成任务”的状态推进。
   const tasks = useTaskStore(state => state.tasks)
   const updateTaskContent = useTaskStore(state => state.updateTaskContent)
   const updateTaskStatus = useTaskStore(state => state.updateTaskStatus)
@@ -18,6 +19,7 @@ export const useTaskPolling = (interval = 3000) => {
 
   useEffect(() => {
     const timer = setInterval(async () => {
+      // 只轮询仍在处理中的任务，避免历史成功任务持续打后端。
       const pendingTasks = tasksRef.current.filter(
         task => task.status != 'SUCCESS' && task.status != 'FAILED'
       )
@@ -32,6 +34,7 @@ export const useTaskPolling = (interval = 3000) => {
 
           if (status && status !== task.status) {
             if (status === 'SUCCESS') {
+              // 成功时后端会返回完整 NoteResult；这里一次性写入 markdown、转写和音频元信息。
               const { markdown, transcript, audio_meta } = res.result
               toast.success('笔记生成成功')
               updateTaskContent(task.id, {

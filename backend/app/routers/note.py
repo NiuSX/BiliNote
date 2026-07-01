@@ -31,11 +31,19 @@ router = APIRouter()
 
 
 class RecordRequest(BaseModel):
+    """删除历史任务时前端提交的视频唯一标识。"""
+
     video_id: str
     platform: str
 
 
 class VideoRequest(BaseModel):
+    """生成笔记接口的请求体。
+
+    该模型是 Web 前端、Tauri 桌面端和浏览器扩展共同遵守的后端契约。
+    字段命名尽量保持与前端表单一致，避免多端维护重复映射逻辑。
+    """
+
     video_url: str
     platform: str
     quality: DownloadQuality
@@ -73,6 +81,7 @@ UPLOAD_DIR = "uploads"
 
 
 def save_note_to_file(task_id: str, note):
+    """将 NoteResult 持久化为 JSON，供任务轮询和历史记录读取。"""
     os.makedirs(NOTE_OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json"), "w", encoding="utf-8") as f:
         json.dump(asdict(note), f, ensure_ascii=False, indent=2)
@@ -117,6 +126,11 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
                   _format: list = None, style: str = None, extras: str = None, video_understanding: bool = False,
                   video_interval=0, grid_size=[]
                   ):
+    """后台执行单个笔记生成任务。
+
+    FastAPI 的 BackgroundTasks 只负责把任务放到请求生命周期之后执行；
+    真正的并发上限由 task_serial_executor 控制，避免多个重型下载/转写任务同时把机器打满。
+    """
 
     if not model_name or not provider_id:
         raise HTTPException(status_code=400, detail="请选择模型和提供者")
@@ -167,6 +181,11 @@ def delete_task(data: RecordRequest):
 
 @router.post("/upload")
 async def upload(file: UploadFile = File(...)):
+    """上传本地视频文件。
+
+    前端选择“本地视频”时会先把文件传到 uploads/，再把 /uploads/... 作为 video_url
+    交给 local_downloader 处理。
+    """
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_location = os.path.join(UPLOAD_DIR, file.filename)
 
@@ -179,6 +198,11 @@ async def upload(file: UploadFile = File(...)):
 
 @router.post("/generate_note")
 def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
+    """提交笔记生成任务并立即返回 task_id。
+
+    任务实际生成是异步的，客户端需要继续轮询 /task_status/{task_id}。
+    这样可以避免长视频下载、转写、LLM 总结时占住 HTTP 请求连接。
+    """
     try:
         # 就绪门禁：本地转写引擎（fast-whisper / mlx-whisper）必须等模型下载完才能跑视频，
         # 否则任务会卡在首次下载（慢 / OOM / 截断），用户只看到一个静默失败的任务。
@@ -236,6 +260,11 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
 
 @router.get("/task_status/{task_id}")
 def get_task_status(task_id: str):
+    """查询任务状态和最终结果。
+
+    状态文件用于跨进程/重启后恢复可见状态；成功后再读取完整结果 JSON。
+    对调用方而言，PENDING/RUNNING/SUCCESS/FAILED 都通过同一个接口获得。
+    """
     status_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.status.json")
     result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
 
@@ -296,6 +325,11 @@ def get_task_status(task_id: str):
 
 @router.get("/image_proxy")
 async def image_proxy(request: Request, url: str):
+    """代理外部封面图。
+
+    B 站、抖音等平台的封面常带 Referer 防盗链；前端直接渲染可能 403，
+    后端补充合适请求头后转发图片流。
+    """
     headers = {
         "Referer": "https://www.bilibili.com/",
         "User-Agent": request.headers.get("User-Agent", ""),

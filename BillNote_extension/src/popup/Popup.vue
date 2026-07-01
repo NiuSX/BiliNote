@@ -7,6 +7,11 @@ import { fetchBilibiliSubtitle } from '~/logic/bilibili-subtitle'
 import { NOTE_FORMATS, NOTE_STYLES, type NoteFormat, type TaskRecord } from '~/logic/types'
 import { getTaskDisplayTitle, normalizeVideoTitle } from '~/logic/task-display'
 
+// Popup 是扩展的一键入口：
+// - 读取当前激活 tab 的 URL 和标题；
+// - 判断平台并提交 generate_note；
+// - 轮询任务状态，同时把任务写入 chrome.storage 供 sidepanel/options 共享。
+
 const tabUrl = ref<string>('')
 const tabTitle = ref<string>('')
 const tabId = ref<number | undefined>(undefined)
@@ -33,6 +38,8 @@ async function loadActiveTab() {
 }
 
 async function poll(taskId: string) {
+  // MV3 popup 关闭后 JS 上下文会销毁，所以这里只做“打开期间”的轻量轮询；
+  // 任务记录会持久化，用户重新打开 popup 或 sidepanel 后可继续读取。
   try {
     const res = await getTaskStatus(taskId)
     upsertTask({
