@@ -230,6 +230,27 @@ class UniversalGPT(GPT):
             raise last_exc
         raise RuntimeError("chat completion failed without exception")
 
+    def _extract_response_content(self, response) -> str:
+        if isinstance(response, str):
+            try:
+                response = json.loads(response)
+            except json.JSONDecodeError:
+                return response.strip()
+
+        if isinstance(response, dict):
+            try:
+                return response["choices"][0]["message"]["content"].strip()
+            except (KeyError, IndexError, TypeError, AttributeError):
+                if isinstance(response.get("content"), str):
+                    return response["content"].strip()
+                if isinstance(response.get("message"), str):
+                    return response["message"].strip()
+                if isinstance(response.get("text"), str):
+                    return response["text"].strip()
+                raise ValueError(f"Unexpected chat completion response format: {response}")
+
+        return response.choices[0].message.content.strip()
+
     def _merge_partials(self, partials: list, checkpoint_key: str | None, source_signature: str | None) -> str:
         def build_messages(texts, *_args, **_kwargs):
             return self._build_merge_messages(texts)
@@ -253,7 +274,7 @@ class UniversalGPT(GPT):
                         self._save_checkpoint(checkpoint_key, source_signature, current_partials, "merge")
                     raise
 
-                new_partials.append(response.choices[0].message.content.strip())
+                new_partials.append(self._extract_response_content(response))
 
                 if checkpoint_key and source_signature:
                     remaining_partials = []
@@ -325,7 +346,7 @@ class UniversalGPT(GPT):
                     self._save_checkpoint(checkpoint_key, source_signature, partials, "summarize")
                 raise
 
-            partials.append(response.choices[0].message.content.strip())
+            partials.append(self._extract_response_content(response))
             if checkpoint_key and source_signature:
                 self._save_checkpoint(checkpoint_key, source_signature, partials, "summarize")
 

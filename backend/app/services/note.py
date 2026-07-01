@@ -32,6 +32,7 @@ from app.services.provider import ProviderService
 from app.transcriber.base import Transcriber
 from app.transcriber.transcriber_provider import get_transcriber, _transcribers
 from app.utils.note_helper import replace_content_markers, prepend_source_link
+from app.utils.path_helper import get_app_dir
 from app.utils.screenshot_marker import extract_screenshot_timestamps
 from app.utils.status_code import StatusCode
 from app.utils.video_helper import generate_screenshot
@@ -436,6 +437,8 @@ class NoteGenerator:
                 logger.info(f"视频下载完成：{self.video_path}")
 
                 if grid_size:
+                    frame_dir = get_app_dir(os.path.join("output_frames", task_id))
+                    grid_dir = get_app_dir(os.path.join("grid_output", task_id))
                     self.video_img_urls = VideoReader(
                         video_path=str(self.video_path),
                         grid_size=tuple(grid_size),
@@ -443,6 +446,8 @@ class NoteGenerator:
                         unit_width=960,
                         unit_height=540,
                         save_quality=80,
+                        frame_dir=frame_dir,
+                        grid_dir=grid_dir,
                     ).run()
                 else:
                     logger.info("未指定 grid_size，跳过缩略图生成")

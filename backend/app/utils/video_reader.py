@@ -154,12 +154,18 @@ class VideoReader:
             #清空帧文件夹
             for file in os.listdir(self.frame_dir):
                 if file.startswith("frame_"):
-                    os.remove(os.path.join(self.frame_dir, file))
+                    try:
+                        os.remove(os.path.join(self.frame_dir, file))
+                    except FileNotFoundError:
+                        pass
             print(self.frame_dir,self.grid_dir)
             #清空网格文件夹
             for file in os.listdir(self.grid_dir):
                 if file.startswith("grid_"):
-                    os.remove(os.path.join(self.grid_dir, file))
+                    try:
+                        os.remove(os.path.join(self.grid_dir, file))
+                    except FileNotFoundError:
+                        pass
             print(self.frame_dir,self.grid_dir)
             self.extract_frames()
             print("2#3",self.frame_dir,self.grid_dir)
