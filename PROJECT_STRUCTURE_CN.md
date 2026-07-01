@@ -8,6 +8,7 @@ BiliNote 是一个 AI 视频笔记生成工具。用户提交 Bilibili、YouTube
 
 项目由以下几部分组成：
 
+
 - `backend/`：FastAPI 后端，负责下载、转写、LLM 调用、任务状态、数据库、导出、RAG 问答。
 - `BillNote_frontend/`：React + Vite Web 前端，也可通过 Tauri 打包桌面端。
 - `BillNote_extension/`：Vue 3 浏览器扩展，用于从当前网页一键提交视频生成笔记。
