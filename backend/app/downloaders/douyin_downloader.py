@@ -14,11 +14,13 @@ from app.downloaders.douyin_helper.abogus import ABogus
 from app.enmus.note_enums import DownloadQuality
 from app.models.audio_model import AudioDownloadResult
 from app.services.cookie_manager import CookieConfigManager
+from app.utils.logger import get_logger
 from app.utils.path_helper import get_data_dir
 from dotenv import load_dotenv
 
 load_dotenv()
 DOUYIN_DOMAIN = "https://www.douyin.com"
+logger = get_logger(__name__)
 
 cfm=CookieConfigManager()
 def get_timestamp(unit: str = "milli"):
@@ -114,14 +116,14 @@ class DouyinDownloader(Downloader):
         super().__init__()
         self.headers_config = DouyinConfig.HEADERS.copy()
         self.headers_config["Cookie"] = cfm.get('douyin')
-        print(self.headers_config)
+        logger.debug("抖音下载器请求头已初始化，Cookie 是否配置: %s", bool(self.headers_config["Cookie"]))
         self.proxies_config = DouyinConfig.PROXIES.copy()
         self.ttwid_config = DouyinConfig.TTWID.copy()
         self.ms_token_config = DouyinConfig.MS_TOKEN.copy()
 
     @staticmethod
     def find_url(string: str) -> list:
-        url = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', string)
+        url = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', string)
         return url
 
     def extract_video_id(self, url: str) -> str:
