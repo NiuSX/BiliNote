@@ -235,7 +235,16 @@ class UniversalGPT(GPT):
             try:
                 response = json.loads(response)
             except json.JSONDecodeError:
-                return response.strip()
+                content = response.strip()
+                lowered = content.lower()
+                if lowered.startswith("<!doctype html") or lowered.startswith("<html") or (
+                    "<head" in lowered and "<body" in lowered
+                ):
+                    raise ValueError(
+                        "LLM provider returned HTML instead of a chat completion response. "
+                        "Check the provider base_url; it should point to the API endpoint, not the web UI."
+                    )
+                return content
 
         if isinstance(response, dict):
             try:

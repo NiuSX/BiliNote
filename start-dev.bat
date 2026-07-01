@@ -3,6 +3,13 @@ setlocal
 
 cd /d "%~dp0"
 
+set HTTP_PROXY=
+set HTTPS_PROXY=
+set ALL_PROXY=
+set http_proxy=
+set https_proxy=
+set all_proxy=
+
 echo ========================================
 echo BiliNote local development startup
 echo ========================================
