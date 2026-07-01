@@ -1,0 +1,138 @@
+name: Release Windows EXE
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, for example v2.4.4. Leave empty for manual test builds.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    concurrency:
+      group: release-windows-exe-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set release version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.version }}" -ne "") {
+            $version = "${{ inputs.version }}"
+          }
+          if ($version -eq "" -or $version -eq "main") {
+            $version = "manual-${{ github.run_number }}"
+          }
+          $clean = $version -replace '^v', ''
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "clean_version=$clean" >> $env:GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install backend dependencies
+        shell: pwsh
+        run: |
+          python -m venv backend\.venv
+          backend\.venv\Scripts\python.exe -m ensurepip --upgrade
+          backend\.venv\Scripts\python.exe -m pip install --upgrade pip
+          backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+          backend\.venv\Scripts\python.exe -m pip install pyinstaller
+          "$pwd\backend\.venv\Scripts" >> $env:GITHUB_PATH
+
+      - name: Build backend binary
+        shell: cmd
+        run: backend\build.bat
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9.15.0'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: BillNote_frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: BillNote_frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            BillNote_frontend/src-tauri/target/
+          key: windows-cargo-${{ hashFiles('BillNote_frontend/src-tauri/Cargo.lock') }}
+          restore-keys: windows-cargo-
+
+      - name: Sync Tauri version
+        working-directory: BillNote_frontend
+        shell: pwsh
+        run: |
+          $path = "src-tauri/tauri.conf.json"
+          $json = Get-Content $path -Raw | ConvertFrom-Json
+          $json.version = "${{ steps.version.outputs.clean_version }}"
+          $json | ConvertTo-Json -Depth 20 | Set-Content $path -Encoding UTF8
+
+      - name: Build Tauri app
+        working-directory: BillNote_frontend
+        run: pnpm tauri build
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-artifacts | Out-Null
+          Get-ChildItem BillNote_frontend\src-tauri\target\release\bundle -Recurse -Include *.exe,*.msi |
+            Copy-Item -Destination release-artifacts
+          Get-ChildItem release-artifacts
+
+      - name: Generate SHA256 checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release-artifacts -File | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash.ToLower())  $($_.Name)"
+          } | Set-Content release-artifacts\SHA256SUMS.txt
+          Get-Content release-artifacts\SHA256SUMS.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliNote-Windows-${{ steps.version.outputs.version }}
+          path: release-artifacts/*
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: BiliNote ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: release-artifacts/*
